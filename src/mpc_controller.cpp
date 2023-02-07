@@ -1,8 +1,8 @@
 /*    rpg_quadrotor_mpc
  *    A model predictive control implementation for quadrotors.
- *    Copyright (C) 2017-2018 Philipp Foehn, 
+ *    Copyright (C) 2017-2018 Philipp Foehn,
  *    Robotics and Perception Group, University of Zurich
- * 
+ *
  *    Intended to be used with rpg_quadrotor_control and rpg_quadrotor_common.
  *    https://github.com/uzh-rpg/rpg_quadrotor_control
  *
@@ -21,35 +21,38 @@
  *
  */
 
-
 #include "rpg_mpc/mpc_controller.h"
 
 #include <ctime>
 
 namespace rpg_mpc {
 
-template<typename T>
-MpcController<T>::MpcController(
-    const ros::NodeHandle& nh, const ros::NodeHandle& pnh, const std::string& topic) :
-    nh_(nh),
-    pnh_(pnh),
-    mpc_wrapper_(MpcWrapper<T>()),
-    timing_feedback_(T(1e-3)),
-    timing_preparation_(T(1e-3)),
-    est_state_((Eigen::Matrix<T, kStateSize, 1>() <<
-                                                  0, 0, 0, 1, 0, 0, 0, 0, 0, 0).finished()),
-    reference_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
-    reference_inputs_(Eigen::Matrix<T, kInputSize, kSamples + 1>::Zero()),
-    predicted_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
-    predicted_inputs_(Eigen::Matrix<T, kInputSize, kSamples>::Zero()),
-    point_of_interest_(Eigen::Matrix<T, 3, 1>::Zero()) {
-  pub_predicted_trajectory_ =
-      nh_.advertise<nav_msgs::Path>(topic, 1);
+template <typename T>
+MpcController<T>::MpcController(const ros::NodeHandle& nh,
+                                const ros::NodeHandle& pnh,
+                                const std::string& topic)
+    : nh_(nh),
+      pnh_(pnh),
+      mpc_wrapper_(MpcWrapper<T>()),
+      timing_feedback_(T(1e-3)),
+      timing_preparation_(T(1e-3)),
+      est_state_(
+          (Eigen::Matrix<T, kStateSize, 1>() << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
+              .finished()),
+      reference_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
+      reference_inputs_(Eigen::Matrix<T, kInputSize, kSamples + 1>::Zero()),
+      predicted_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
+      predicted_inputs_(Eigen::Matrix<T, kInputSize, kSamples>::Zero()),
+      point_of_interest_(Eigen::Matrix<T, 3, 1>::Zero()) {
+  pub_predicted_trajectory_ = nh_.advertise<nav_msgs::Path>(topic, 1);
 
-  sub_point_of_interest_ = nh_.subscribe("mpc/point_of_interest", 1,
-                                         &MpcController<T>::pointOfInterestCallback, this);
-  sub_autopilot_off_ = nh_.subscribe("autopilot/off", 1,
-                                     &MpcController<T>::offCallback, this);
+  sub_point_of_interest_ =
+      nh_.subscribe("mpc/point_of_interest",
+                    1,
+                    &MpcController<T>::pointOfInterestCallback,
+                    this);
+  sub_autopilot_off_ =
+      nh_.subscribe("autopilot/off", 1, &MpcController<T>::offCallback, this);
 
   if (!params_.loadParameters(pnh_)) {
     ROS_ERROR("[%s] Could not load parameters.", pnh_.getNamespace().c_str());
@@ -62,7 +65,7 @@ MpcController<T>::MpcController(
   preparation_thread_ = std::thread(&MpcWrapper<T>::prepare, mpc_wrapper_);
 }
 
-template<typename T>
+template <typename T>
 void MpcController<T>::pointOfInterestCallback(
     const geometry_msgs::PointStamped::ConstPtr& msg) {
   point_of_interest_(0) = msg->point.x;
@@ -71,13 +74,12 @@ void MpcController<T>::pointOfInterestCallback(
   mpc_wrapper_.setPointOfInterest(point_of_interest_);
 }
 
-template<typename T>
-void MpcController<T>::offCallback(
-    const std_msgs::Empty::ConstPtr& msg) {
+template <typename T>
+void MpcController<T>::offCallback(const std_msgs::Empty::ConstPtr& msg) {
   solve_from_scratch_ = true;
 }
 
-template<typename T>
+template <typename T>
 quadrotor_common::ControlCommand MpcController<T>::off() {
   quadrotor_common::ControlCommand command;
 
@@ -86,7 +88,7 @@ quadrotor_common::ControlCommand MpcController<T>::off() {
   return command;
 }
 
-template<typename T>
+template <typename T>
 quadrotor_common::ControlCommand MpcController<T>::run(
     const quadrotor_common::QuadStateEstimate& state_estimate,
     const quadrotor_common::Trajectory& reference_trajectory,
@@ -126,19 +128,20 @@ quadrotor_common::ControlCommand MpcController<T>::run(
 
   // Timing
   const clock_t end = clock();
-  timing_feedback_ = 0.9 * timing_feedback_ +
-                     0.1 * double(end - start) / CLOCKS_PER_SEC;
+  timing_feedback_ =
+      0.9 * timing_feedback_ + 0.1 * double(end - start) / CLOCKS_PER_SEC;
   if (params_.print_info_)
-    ROS_INFO_THROTTLE(1.0, "MPC Timing: Latency: %1.1f ms  |  Total: %1.1f ms",
-                      timing_feedback_ * 1000, (timing_feedback_ + timing_preparation_) * 1000);
+    ROS_INFO_THROTTLE(1.0,
+                      "MPC Timing: Latency: %1.1f ms  |  Total: %1.1f ms",
+                      timing_feedback_ * 1000,
+                      (timing_feedback_ + timing_preparation_) * 1000);
 
   // Return the input control command.
-  return updateControlCommand(predicted_states_.col(0),
-                              predicted_inputs_.col(0),
-                              call_time);
+  return updateControlCommand(
+      predicted_states_.col(0), predicted_inputs_.col(0), call_time);
 }
 
-template<typename T>
+template <typename T>
 bool MpcController<T>::setStateEstimate(
     const quadrotor_common::QuadStateEstimate& state_estimate) {
   est_state_(kPosX) = state_estimate.position.x();
@@ -151,11 +154,12 @@ bool MpcController<T>::setStateEstimate(
   est_state_(kVelX) = state_estimate.velocity.x();
   est_state_(kVelY) = state_estimate.velocity.y();
   est_state_(kVelZ) = state_estimate.velocity.z();
-  const bool quaternion_norm_ok = abs(est_state_.segment(kOriW, 4).norm() - 1.0) < 0.1;
+  const bool quaternion_norm_ok =
+      abs(est_state_.segment(kOriW, 4).norm() - 1.0) < 0.1;
   return quaternion_norm_ok;
 }
 
-template<typename T>
+template <typename T>
 bool MpcController<T>::setReference(
     const quadrotor_common::Trajectory& reference_trajectory) {
   reference_states_.setZero();
@@ -168,26 +172,35 @@ bool MpcController<T>::setReference(
   Eigen::Quaternion<T> q_orientation;
   bool quaternion_norm_ok(true);
   if (reference_trajectory.points.size() == 1) {
-    q_heading = Eigen::Quaternion<T>(Eigen::AngleAxis<T>(
-        reference_trajectory.points.front().heading,
-        Eigen::Matrix<T, 3, 1>::UnitZ()));
-    q_orientation = reference_trajectory.points.front().orientation.template cast<T>() * q_heading;
-    reference_states_ = (Eigen::Matrix<T, kStateSize, 1>()
-        << reference_trajectory.points.front().position.template cast<T>(),
-        q_orientation.w(),
-        q_orientation.x(),
-        q_orientation.y(),
-        q_orientation.z(),
-        reference_trajectory.points.front().velocity.template cast<T>()
-    ).finished().replicate(1, kSamples + 1);
+    q_heading = Eigen::Quaternion<T>(
+        Eigen::AngleAxis<T>(reference_trajectory.points.front().heading,
+                            Eigen::Matrix<T, 3, 1>::UnitZ()));
+    q_orientation =
+        reference_trajectory.points.front().orientation.template cast<T>() *
+        q_heading;
+    reference_states_ =
+        (Eigen::Matrix<T, kStateSize, 1>()
+             << reference_trajectory.points.front().position.template cast<T>(),
+         q_orientation.w(),
+         q_orientation.x(),
+         q_orientation.y(),
+         q_orientation.z(),
+         reference_trajectory.points.front().velocity.template cast<T>())
+            .finished()
+            .replicate(1, kSamples + 1);
 
-    acceleration << reference_trajectory.points.front().acceleration.template cast<T>() - gravity;
-    reference_inputs_ = (Eigen::Matrix<T, kInputSize, 1>() << acceleration.norm(),
-        reference_trajectory.points.front().bodyrates.template cast<T>()
-    ).finished().replicate(1, kSamples + 1);
+    acceleration
+        << reference_trajectory.points.front().acceleration.template cast<T>() -
+               gravity;
+    reference_inputs_ =
+        (Eigen::Matrix<T, kInputSize, 1>() << acceleration.norm(),
+         reference_trajectory.points.front().bodyrates.template cast<T>())
+            .finished()
+            .replicate(1, kSamples + 1);
   } else {
     auto iterator(reference_trajectory.points.begin());
-    ros::Duration t_start = reference_trajectory.points.begin()->time_from_start;
+    ros::Duration t_start =
+        reference_trajectory.points.begin()->time_from_start;
     auto last_element = reference_trajectory.points.end();
     last_element = std::prev(last_element);
 
@@ -201,25 +214,23 @@ bool MpcController<T>::setReference(
           iterator->heading, Eigen::Matrix<T, 3, 1>::UnitZ()));
       q_orientation = q_heading * iterator->orientation.template cast<T>();
       reference_states_.col(i) << iterator->position.template cast<T>(),
-          q_orientation.w(),
-          q_orientation.x(),
-          q_orientation.y(),
-          q_orientation.z(),
-          iterator->velocity.template cast<T>();
+          q_orientation.w(), q_orientation.x(), q_orientation.y(),
+          q_orientation.z(), iterator->velocity.template cast<T>();
       if (reference_states_.col(i).segment(kOriW, 4).dot(
-          est_state_.segment(kOriW, 4)) < 0.0)
+              est_state_.segment(kOriW, 4)) < 0.0)
         reference_states_.block(kOriW, i, 4, 1) =
             -reference_states_.block(kOriW, i, 4, 1);
       acceleration << iterator->acceleration.template cast<T>() - gravity;
       reference_inputs_.col(i) << acceleration.norm(),
           iterator->bodyrates.template cast<T>();
-      quaternion_norm_ok &= abs(est_state_.segment(kOriW, 4).norm() - 1.0) < 0.1;
+      quaternion_norm_ok &=
+          abs(est_state_.segment(kOriW, 4).norm() - 1.0) < 0.1;
     }
   }
   return quaternion_norm_ok;
 }
 
-template<typename T>
+template <typename T>
 quadrotor_common::ControlCommand MpcController<T>::updateControlCommand(
     const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state,
     const Eigen::Ref<const Eigen::Matrix<T, kInputSize, 1>> input,
@@ -227,14 +238,18 @@ quadrotor_common::ControlCommand MpcController<T>::updateControlCommand(
   Eigen::Matrix<T, kInputSize, 1> input_bounded = input.template cast<T>();
 
   // Bound inputs for sanity.
-  input_bounded(INPUT::kThrust) = std::max(params_.min_thrust_,
-                                           std::min(params_.max_thrust_, input_bounded(INPUT::kThrust)));
-  input_bounded(INPUT::kRateX) = std::max(-params_.max_bodyrate_xy_,
-                                          std::min(params_.max_bodyrate_xy_, input_bounded(INPUT::kRateX)));
-  input_bounded(INPUT::kRateY) = std::max(-params_.max_bodyrate_xy_,
-                                          std::min(params_.max_bodyrate_xy_, input_bounded(INPUT::kRateY)));
-  input_bounded(INPUT::kRateZ) = std::max(-params_.max_bodyrate_z_,
-                                          std::min(params_.max_bodyrate_z_, input_bounded(INPUT::kRateZ)));
+  input_bounded(INPUT::kThrust) =
+      std::max(params_.min_thrust_,
+               std::min(params_.max_thrust_, input_bounded(INPUT::kThrust)));
+  input_bounded(INPUT::kRateX) = std::max(
+      -params_.max_bodyrate_xy_,
+      std::min(params_.max_bodyrate_xy_, input_bounded(INPUT::kRateX)));
+  input_bounded(INPUT::kRateY) = std::max(
+      -params_.max_bodyrate_xy_,
+      std::min(params_.max_bodyrate_xy_, input_bounded(INPUT::kRateY)));
+  input_bounded(INPUT::kRateZ) =
+      std::max(-params_.max_bodyrate_z_,
+               std::min(params_.max_bodyrate_z_, input_bounded(INPUT::kRateZ)));
 
   quadrotor_common::ControlCommand command;
 
@@ -253,7 +268,7 @@ quadrotor_common::ControlCommand MpcController<T>::updateControlCommand(
   return command;
 }
 
-template<typename T>
+template <typename T>
 bool MpcController<T>::publishPrediction(
     const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
     const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples>> inputs,
@@ -282,7 +297,7 @@ bool MpcController<T>::publishPrediction(
   return true;
 }
 
-template<typename T>
+template <typename T>
 void MpcController<T>::preparationThread() {
   const clock_t start = clock();
 
@@ -290,26 +305,24 @@ void MpcController<T>::preparationThread() {
 
   // Timing
   const clock_t end = clock();
-  timing_preparation_ = 0.9 * timing_preparation_ +
-                        0.1 * double(end - start) / CLOCKS_PER_SEC;
+  timing_preparation_ =
+      0.9 * timing_preparation_ + 0.1 * double(end - start) / CLOCKS_PER_SEC;
 }
 
-template<typename T>
+template <typename T>
 bool MpcController<T>::setNewParams(MpcParams<T>& params) {
   mpc_wrapper_.setCosts(params.Q_, params.R_);
-  mpc_wrapper_.setLimits(
-      params.min_thrust_, params.max_thrust_,
-      params.max_bodyrate_xy_, params.max_bodyrate_z_);
+  mpc_wrapper_.setLimits(params.min_thrust_,
+                         params.max_thrust_,
+                         params.max_bodyrate_xy_,
+                         params.max_bodyrate_z_);
   mpc_wrapper_.setCameraParameters(params.p_B_C_, params.q_B_C_);
   params.changed_ = false;
   return true;
 }
 
+template class MpcController<float>;
 
-template
-class MpcController<float>;
+template class MpcController<double>;
 
-template
-class MpcController<double>;
-
-} // namespace rpg_mpc
+}  // namespace rpg_mpc

@@ -1,8 +1,8 @@
 /*    rpg_quadrotor_mpc
  *    A model predictive control implementation for quadrotors.
- *    Copyright (C) 2017-2018 Philipp Foehn, 
+ *    Copyright (C) 2017-2018 Philipp Foehn,
  *    Robotics and Perception Group, University of Zurich
- * 
+ *
  *    Intended to be used with rpg_quadrotor_control and rpg_quadrotor_common.
  *    https://github.com/uzh-rpg/rpg_quadrotor_control
  *
@@ -21,16 +21,14 @@
  *
  */
 
-
-#include "ros/ros.h"
 #include "ros/console.h"
+#include "ros/ros.h"
 #include "rpg_mpc/mpc_controller.h"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
   ros::init(argc, argv, "rpg_mpc");
-  rpg_mpc::MpcController<float>
-    controller(ros::NodeHandle(), ros::NodeHandle("~"));
+  rpg_mpc::MpcController<float> controller(ros::NodeHandle(),
+                                           ros::NodeHandle("~"));
   ros::spin();
 
   return 0;
