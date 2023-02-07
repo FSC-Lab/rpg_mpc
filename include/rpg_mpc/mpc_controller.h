@@ -1,8 +1,8 @@
 /*    rpg_quadrotor_mpc
  *    A model predictive control implementation for quadrotors.
- *    Copyright (C) 2017-2018 Philipp Foehn, 
+ *    Copyright (C) 2017-2018 Philipp Foehn,
  *    Robotics and Perception Group, University of Zurich
- * 
+ *
  *    Intended to be used with rpg_quadrotor_control and rpg_quadrotor_common.
  *    https://github.com/uzh-rpg/rpg_quadrotor_control
  *
@@ -21,14 +21,10 @@
  *
  */
 
-
 #pragma once
 
-#include <thread>
-
-#include <Eigen/Eigen>
-#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
@@ -39,8 +35,11 @@
 #include <std_msgs/Empty.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
-#include "rpg_mpc/mpc_wrapper.h"
+#include <Eigen/Eigen>
+#include <thread>
+
 #include "rpg_mpc/mpc_params.h"
+#include "rpg_mpc/mpc_wrapper.h"
 
 namespace rpg_mpc {
 
@@ -57,23 +56,19 @@ enum STATE {
   kVelZ = 9
 };
 
-enum INPUT {
-  kThrust = 0,
-  kRateX = 1,
-  kRateY = 2,
-  kRateZ = 3
-};
+enum INPUT { kThrust = 0, kRateX = 1, kRateY = 2, kRateZ = 3 };
 
-template<typename T>
+template <typename T>
 class MpcController {
-public:
-
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  static_assert(kStateSize == 10,
-                "MpcController: Wrong model size. Number of states does not match.");
-  static_assert(kInputSize == 4,
-                "MpcController: Wrong model size. Number of inputs does not match.");
+  static_assert(
+      kStateSize == 10,
+      "MpcController: Wrong model size. Number of states does not match.");
+  static_assert(
+      kInputSize == 4,
+      "MpcController: Wrong model size. Number of inputs does not match.");
 
   MpcController(const ros::NodeHandle& nh,
                 const ros::NodeHandle& pnh,
@@ -88,8 +83,7 @@ public:
       const quadrotor_common::Trajectory& reference_trajectory,
       const MpcParams<T>& params);
 
-
-private:
+ private:
   // Internal helper functions.
 
   void pointOfInterestCallback(
@@ -145,5 +139,4 @@ private:
   Eigen::Matrix<T, 3, 1> point_of_interest_;
 };
 
-
-} // namespace MPC
+}  // namespace rpg_mpc

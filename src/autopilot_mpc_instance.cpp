@@ -1,8 +1,8 @@
 /*    rpg_quadrotor_mpc
  *    A model predictive control implementation for quadrotors.
- *    Copyright (C) 2017-2018 Philipp Foehn, 
+ *    Copyright (C) 2017-2018 Philipp Foehn,
  *    Robotics and Perception Group, University of Zurich
- * 
+ *
  *    Intended to be used with rpg_quadrotor_control and rpg_quadrotor_common.
  *    https://github.com/uzh-rpg/rpg_quadrotor_control
  *
@@ -21,22 +21,20 @@
  *
  */
 
-
 #include <rpg_mpc/mpc_controller.h>
 #include <rpg_mpc/mpc_params.h>
 
 #include "autopilot/autopilot.h"
 
 template class autopilot::AutoPilot<rpg_mpc::MpcController<float>,
-                         rpg_mpc::MpcParams<float>>;
+                                    rpg_mpc::MpcParams<float>>;
 template class autopilot::AutoPilot<rpg_mpc::MpcController<double>,
-                         rpg_mpc::MpcParams<double>>;
+                                    rpg_mpc::MpcParams<double>>;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
   ros::init(argc, argv, "autopilot");
-  autopilot::AutoPilot<rpg_mpc::MpcController<float>,
-                       rpg_mpc::MpcParams<float>> autopilot;
+  autopilot::AutoPilot<rpg_mpc::MpcController<float>, rpg_mpc::MpcParams<float>>
+      autopilot;
 
   ros::spin();
 
