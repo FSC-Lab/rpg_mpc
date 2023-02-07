@@ -25,6 +25,8 @@
 
 #include <ctime>
 
+#include "rpg_mpc/macros.h"
+
 namespace rpg_mpc {
 
 template <typename T>
@@ -76,6 +78,7 @@ void MpcController<T>::pointOfInterestCallback(
 
 template <typename T>
 void MpcController<T>::offCallback(const std_msgs::Empty::ConstPtr& msg) {
+  MARK_UNUSED(msg);
   solve_from_scratch_ = true;
 }
 
@@ -128,8 +131,8 @@ quadrotor_common::ControlCommand MpcController<T>::run(
 
   // Timing
   const clock_t end = clock();
-  timing_feedback_ =
-      0.9 * timing_feedback_ + 0.1 * double(end - start) / CLOCKS_PER_SEC;
+  timing_feedback_ = 0.9 * timing_feedback_ +
+                     0.1 * static_cast<double>(end - start) / CLOCKS_PER_SEC;
   if (params_.print_info_)
     ROS_INFO_THROTTLE(1.0,
                       "MPC Timing: Latency: %1.1f ms  |  Total: %1.1f ms",
@@ -273,6 +276,7 @@ bool MpcController<T>::publishPrediction(
     const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
     const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples>> inputs,
     ros::Time& time) {
+  MARK_UNUSED(inputs);
   nav_msgs::Path path_msg;
   path_msg.header.stamp = time;
   path_msg.header.frame_id = "world";
@@ -305,8 +309,8 @@ void MpcController<T>::preparationThread() {
 
   // Timing
   const clock_t end = clock();
-  timing_preparation_ =
-      0.9 * timing_preparation_ + 0.1 * double(end - start) / CLOCKS_PER_SEC;
+  timing_preparation_ = 0.9 * timing_preparation_ +
+                        0.1 * static_cast<double>(end - start) / CLOCKS_PER_SEC;
 }
 
 template <typename T>

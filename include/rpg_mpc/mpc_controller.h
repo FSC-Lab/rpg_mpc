@@ -36,6 +36,7 @@
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
 #include <Eigen/Eigen>
+#include <string>
 #include <thread>
 
 #include "rpg_mpc/mpc_params.h"
