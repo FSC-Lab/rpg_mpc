@@ -62,6 +62,13 @@ enum INPUT { kThrust = 0, kRateX = 1, kRateY = 2, kRateZ = 3 };
 template <typename T>
 class MpcController {
  public:
+  using WrapperType = MpcWrapper<T>;
+  using Vector3Type = typename WrapperType::Vector3Type;
+  using StateType = typename WrapperType::StateType;
+  using StateSamplesType = typename WrapperType::StateSamplesType;
+  using InputType = typename WrapperType::InputType;
+  using InputSamplesType = typename WrapperType::InputSamplesType;
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   static_assert(
@@ -98,12 +105,12 @@ class MpcController {
   bool setReference(const quadrotor_common::Trajectory& reference_trajectory);
 
   quadrotor_common::ControlCommand updateControlCommand(
-      const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state,
-      const Eigen::Ref<const Eigen::Matrix<T, kInputSize, 1>> input,
+      const Eigen::Ref<const StateType> state,
+      const Eigen::Ref<const InputType> input,
       ros::Time& time);
 
   bool publishPrediction(
-      const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
+      const Eigen::Ref<const StateSamplesType> states,
       const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples>> inputs,
       ros::Time& time);
 
@@ -132,12 +139,12 @@ class MpcController {
   // Variables
   T timing_feedback_, timing_preparation_;
   bool solve_from_scratch_;
-  Eigen::Matrix<T, kStateSize, 1> est_state_;
-  Eigen::Matrix<T, kStateSize, kSamples + 1> reference_states_;
-  Eigen::Matrix<T, kInputSize, kSamples + 1> reference_inputs_;
-  Eigen::Matrix<T, kStateSize, kSamples + 1> predicted_states_;
+  StateType est_state_;
+  StateSamplesType reference_states_;
+  InputSamplesType reference_inputs_;
+  StateSamplesType predicted_states_;
   Eigen::Matrix<T, kInputSize, kSamples> predicted_inputs_;
-  Eigen::Matrix<T, 3, 1> point_of_interest_;
+  Vector3Type point_of_interest_;
 };
 
 }  // namespace rpg_mpc

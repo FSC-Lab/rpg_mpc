@@ -36,17 +36,8 @@ MpcWrapper<T>::MpcWrapper() {
   acado_initializeSolver();
 
   // Initialize the states and controls.
-  const Eigen::Matrix<T, kStateSize, 1> hover_state =
-      (Eigen::Matrix<T, kStateSize, 1>() << 0.0,
-       0.0,
-       0.0,
-       1.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       0.0)
+  const StateType hover_state =
+      (StateType() << 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
           .finished();
 
   // Initialize states x and xN and input u.
@@ -79,9 +70,9 @@ MpcWrapper<T>::MpcWrapper() {
   }
 
   // Initialize online data.
-  Eigen::Matrix<T, 3, 1> p_B_C(0, 0, 0);
+  Vector3Type p_B_C(0, 0, 0);
   Eigen::Quaternion<T> q_B_C(1, 0, 0, 0);
-  Eigen::Matrix<T, 3, 1> point_of_interest(0, 0, -1000);
+  Vector3Type point_of_interest(0, 0, -1000);
 
   setCameraParameters(p_B_C, q_B_C);
   setPointOfInterest(point_of_interest);
@@ -94,20 +85,18 @@ MpcWrapper<T>::MpcWrapper() {
 
 // Constructor with cost matrices as arguments.
 template <typename T>
-MpcWrapper<T>::MpcWrapper(
-    const Eigen::Ref<const Eigen::Matrix<T, kCostSize, kCostSize>> Q,
-    const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kInputSize>> R) {
+MpcWrapper<T>::MpcWrapper(const Eigen::Ref<const StateCostType> Q,
+                          const Eigen::Ref<const InputCostType> R) {
   setCosts(Q, R);
   MpcWrapper();
 }
 
 // Set cost matrices with optional scaling.
 template <typename T>
-bool MpcWrapper<T>::setCosts(
-    const Eigen::Ref<const Eigen::Matrix<T, kCostSize, kCostSize>> Q,
-    const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kInputSize>> R,
-    const T state_cost_scaling,
-    const T input_cost_scaling) {
+bool MpcWrapper<T>::setCosts(const Eigen::Ref<const StateCostType> Q,
+                             const Eigen::Ref<const InputCostType> R,
+                             const T state_cost_scaling,
+                             const T input_cost_scaling) {
   if (state_cost_scaling < 0.0 || input_cost_scaling < 0.0) {
     ROS_ERROR("MPC: Cost scaling is wrong, must be non-negative!");
     return false;
@@ -162,8 +151,8 @@ bool MpcWrapper<T>::setLimits(T min_thrust,
   }
 
   // Set input boundaries.
-  Eigen::Matrix<T, 4, 1> lower_bounds = Eigen::Matrix<T, 4, 1>::Zero();
-  Eigen::Matrix<T, 4, 1> upper_bounds = Eigen::Matrix<T, 4, 1>::Zero();
+  InputType lower_bounds = InputType::Zero();
+  InputType upper_bounds = InputType::Zero();
   lower_bounds << min_thrust, -max_rollpitchrate, -max_rollpitchrate,
       -max_yawrate;
   upper_bounds << max_thrust, max_rollpitchrate, max_rollpitchrate, max_yawrate;
@@ -177,12 +166,11 @@ bool MpcWrapper<T>::setLimits(T min_thrust,
 // Set camera extrinsics.
 template <typename T>
 bool MpcWrapper<T>::setCameraParameters(
-    const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& p_B_C,
-    Eigen::Quaternion<T>& q_B_C) {
+    const Eigen::Ref<const Vector3Type>& p_B_C, Eigen::Quaternion<T>& q_B_C) {
   acado_online_data_.block(3, 0, 3, ACADO_N + 1).colwise() =
       p_B_C.template cast<float>();
 
-  Eigen::Matrix<T, 4, 1> q_B_C_mat(q_B_C.w(), q_B_C.x(), q_B_C.y(), q_B_C.z());
+  InputType q_B_C_mat(q_B_C.w(), q_B_C.x(), q_B_C.y(), q_B_C.z());
   acado_online_data_.block(6, 0, 4, ACADO_N + 1).colwise() =
       q_B_C_mat.template cast<float>();
 
@@ -192,7 +180,7 @@ bool MpcWrapper<T>::setCameraParameters(
 // Set the point of interest. Perception cost should be non-zero.
 template <typename T>
 bool MpcWrapper<T>::setPointOfInterest(
-    const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& position) {
+    const Eigen::Ref<const Vector3Type>& position) {
   acado_online_data_.block(0, 0, 3, ACADO_N + 1).colwise() =
       position.template cast<float>();
   return true;
@@ -200,8 +188,7 @@ bool MpcWrapper<T>::setPointOfInterest(
 
 // Set a reference pose.
 template <typename T>
-bool MpcWrapper<T>::setReferencePose(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state) {
+bool MpcWrapper<T>::setReferencePose(const Eigen::Ref<const StateType> state) {
   acado_reference_states_.block(0, 0, kStateSize, kSamples).colwise() =
       state.template cast<float>();
 
@@ -224,8 +211,8 @@ bool MpcWrapper<T>::setReferencePose(
 // Set a reference trajectory.
 template <typename T>
 bool MpcWrapper<T>::setTrajectory(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
-    const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples + 1>> inputs) {
+    const Eigen::Ref<const StateSamplesType> states,
+    const Eigen::Ref<const InputSamplesType> inputs) {
   Eigen::Map<Eigen::Matrix<float, kRefSize, kSamples, Eigen::ColMajor>> y(
       const_cast<float*>(acadoVariables.y));
 
@@ -249,8 +236,7 @@ bool MpcWrapper<T>::setTrajectory(
 
 // Reset states and inputs and calculate new solution.
 template <typename T>
-bool MpcWrapper<T>::solve(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state) {
+bool MpcWrapper<T>::solve(const Eigen::Ref<const StateType> state) {
   acado_states_.colwise() = state.template cast<float>();
 
   acado_inputs_.colwise() = kHoverInput_;
@@ -260,9 +246,8 @@ bool MpcWrapper<T>::solve(
 
 // Calculate new solution from last known solution.
 template <typename T>
-bool MpcWrapper<T>::update(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state,
-    bool do_preparation) {
+bool MpcWrapper<T>::update(const Eigen::Ref<const StateType> state,
+                           bool do_preparation) {
   if (!acado_is_prepared_) {
     ROS_WARN("MPC: Solver was triggered without preparation, abort!");
     return false;
@@ -300,16 +285,14 @@ bool MpcWrapper<T>::prepare() {
 
 // Get a specific state.
 template <typename T>
-void MpcWrapper<T>::getState(
-    const int node_index,
-    Eigen::Ref<Eigen::Matrix<T, kStateSize, 1>> return_state) {
+void MpcWrapper<T>::getState(const int node_index,
+                             Eigen::Ref<StateType> return_state) {
   return_state = acado_states_.col(node_index).cast<T>();
 }
 
 // Get all states.
 template <typename T>
-void MpcWrapper<T>::getStates(
-    Eigen::Ref<Eigen::Matrix<T, kStateSize, kSamples + 1>> return_states) {
+void MpcWrapper<T>::getStates(Eigen::Ref<StateSamplesType> return_states) {
   return_states = acado_states_.cast<T>();
 }
 

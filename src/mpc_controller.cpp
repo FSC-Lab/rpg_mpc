@@ -38,14 +38,12 @@ MpcController<T>::MpcController(const ros::NodeHandle& nh,
       mpc_wrapper_(MpcWrapper<T>()),
       timing_feedback_(T(1e-3)),
       timing_preparation_(T(1e-3)),
-      est_state_(
-          (Eigen::Matrix<T, kStateSize, 1>() << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
-              .finished()),
-      reference_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
-      reference_inputs_(Eigen::Matrix<T, kInputSize, kSamples + 1>::Zero()),
-      predicted_states_(Eigen::Matrix<T, kStateSize, kSamples + 1>::Zero()),
+      est_state_((StateType() << 0, 0, 0, 1, 0, 0, 0, 0, 0, 0).finished()),
+      reference_states_(StateSamplesType::Zero()),
+      reference_inputs_(InputSamplesType::Zero()),
+      predicted_states_(StateSamplesType::Zero()),
       predicted_inputs_(Eigen::Matrix<T, kInputSize, kSamples>::Zero()),
-      point_of_interest_(Eigen::Matrix<T, 3, 1>::Zero()) {
+      point_of_interest_(Vector3Type::Zero()) {
   pub_predicted_trajectory_ = nh_.advertise<nav_msgs::Path>(topic, 1);
 
   sub_point_of_interest_ =
@@ -169,20 +167,19 @@ bool MpcController<T>::setReference(
   reference_inputs_.setZero();
 
   const T dt = mpc_wrapper_.getTimestep();
-  Eigen::Matrix<T, 3, 1> acceleration;
-  const Eigen::Matrix<T, 3, 1> gravity(0.0, 0.0, -9.81);
+  Vector3Type acceleration;
+  const Vector3Type gravity(0.0, 0.0, -9.81);
   Eigen::Quaternion<T> q_heading;
   Eigen::Quaternion<T> q_orientation;
   bool quaternion_norm_ok(true);
   if (reference_trajectory.points.size() == 1) {
-    q_heading = Eigen::Quaternion<T>(
-        Eigen::AngleAxis<T>(reference_trajectory.points.front().heading,
-                            Eigen::Matrix<T, 3, 1>::UnitZ()));
+    q_heading = Eigen::Quaternion<T>(Eigen::AngleAxis<T>(
+        reference_trajectory.points.front().heading, Vector3Type::UnitZ()));
     q_orientation =
         reference_trajectory.points.front().orientation.template cast<T>() *
         q_heading;
     reference_states_ =
-        (Eigen::Matrix<T, kStateSize, 1>()
+        (StateType()
              << reference_trajectory.points.front().position.template cast<T>(),
          q_orientation.w(),
          q_orientation.x(),
@@ -196,7 +193,7 @@ bool MpcController<T>::setReference(
         << reference_trajectory.points.front().acceleration.template cast<T>() -
                gravity;
     reference_inputs_ =
-        (Eigen::Matrix<T, kInputSize, 1>() << acceleration.norm(),
+        (InputType() << acceleration.norm(),
          reference_trajectory.points.front().bodyrates.template cast<T>())
             .finished()
             .replicate(1, kSamples + 1);
@@ -213,8 +210,8 @@ bool MpcController<T>::setReference(
         iterator++;
       }
 
-      q_heading = Eigen::Quaternion<T>(Eigen::AngleAxis<T>(
-          iterator->heading, Eigen::Matrix<T, 3, 1>::UnitZ()));
+      q_heading = Eigen::Quaternion<T>(
+          Eigen::AngleAxis<T>(iterator->heading, Vector3Type::UnitZ()));
       q_orientation = q_heading * iterator->orientation.template cast<T>();
       reference_states_.col(i) << iterator->position.template cast<T>(),
           q_orientation.w(), q_orientation.x(), q_orientation.y(),
@@ -235,10 +232,10 @@ bool MpcController<T>::setReference(
 
 template <typename T>
 quadrotor_common::ControlCommand MpcController<T>::updateControlCommand(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state,
-    const Eigen::Ref<const Eigen::Matrix<T, kInputSize, 1>> input,
+    const Eigen::Ref<const StateType> state,
+    const Eigen::Ref<const InputType> input,
     ros::Time& time) {
-  Eigen::Matrix<T, kInputSize, 1> input_bounded = input.template cast<T>();
+  InputType input_bounded = input.template cast<T>();
 
   // Bound inputs for sanity.
   input_bounded(INPUT::kThrust) =
@@ -273,7 +270,7 @@ quadrotor_common::ControlCommand MpcController<T>::updateControlCommand(
 
 template <typename T>
 bool MpcController<T>::publishPrediction(
-    const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
+    const Eigen::Ref<const StateSamplesType> states,
     const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples>> inputs,
     ros::Time& time) {
   MARK_UNUSED(inputs);

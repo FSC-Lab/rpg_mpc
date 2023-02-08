@@ -48,43 +48,44 @@ class MpcWrapper {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  MpcWrapper();
-  MpcWrapper(
-      const Eigen::Ref<const Eigen::Matrix<T, kCostSize, kCostSize>> Q,
-      const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kInputSize>> R);
+  using Vector3Type = Eigen::Matrix<T, 3, 1>;
+  using StateCostType = Eigen::Matrix<T, kCostSize, kCostSize>;
+  using InputCostType = Eigen::Matrix<T, kInputSize, kInputSize>;
+  using StateType = Eigen::Matrix<T, kStateSize, 1>;
+  using StateSamplesType = Eigen::Matrix<T, kStateSize, kSamples + 1>;
+  using InputType = Eigen::Matrix<T, kInputSize, 1>;
+  using InputSamplesType = Eigen::Matrix<T, kInputSize, kSamples + 1>;
 
-  bool setCosts(
-      const Eigen::Ref<const Eigen::Matrix<T, kCostSize, kCostSize>> Q,
-      const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kInputSize>> R,
-      const T state_cost_scaling = 0.0,
-      const T input_cost_scaling = 0.0);
+  MpcWrapper();
+  MpcWrapper(const Eigen::Ref<const StateCostType> Q,
+             const Eigen::Ref<const InputCostType> R);
+
+  bool setCosts(const Eigen::Ref<const StateCostType> Q,
+                const Eigen::Ref<const InputCostType> R,
+                const T state_cost_scaling = 0.0,
+                const T input_cost_scaling = 0.0);
 
   bool setLimits(T min_thrust,
                  T max_thrust,
                  T max_rollpitchrate,
                  T max_yawrate);
-  bool setCameraParameters(
-      const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& p_B_C,
-      Eigen::Quaternion<T>& q_B_C);
-  bool setPointOfInterest(
-      const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& position);
+  bool setCameraParameters(const Eigen::Ref<const Vector3Type>& p_B_C,
+                           Eigen::Quaternion<T>& q_B_C);
+  bool setPointOfInterest(const Eigen::Ref<const Vector3Type>& position);
 
-  bool setReferencePose(
-      const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state);
+  bool setReferencePose(const Eigen::Ref<const StateType> state);
   bool setTrajectory(
-      const Eigen::Ref<const Eigen::Matrix<T, kStateSize, kSamples + 1>> states,
+      const Eigen::Ref<const StateSamplesType> states,
       const Eigen::Ref<const Eigen::Matrix<T, kInputSize, kSamples + 1>>
           inputs);
 
-  bool solve(const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state);
-  bool update(const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state,
+  bool solve(const Eigen::Ref<const StateType> state);
+  bool update(const Eigen::Ref<const StateType> state,
               bool do_preparation = true);
   bool prepare();
 
-  void getState(const int node_index,
-                Eigen::Ref<Eigen::Matrix<T, kStateSize, 1>> return_state);
-  void getStates(
-      Eigen::Ref<Eigen::Matrix<T, kStateSize, kSamples + 1>> return_states);
+  void getState(const int node_index, Eigen::Ref<StateType> return_state);
+  void getStates(Eigen::Ref<StateSamplesType> return_states);
   void getInput(const int node_index,
                 Eigen::Ref<Eigen::Matrix<T, kInputSize, 1>> return_input);
   void getInputs(
@@ -123,9 +124,9 @@ class MpcWrapper {
       acado_upper_bounds_{acadoVariables.ubValues};
 
   Eigen::Matrix<T, kRefSize, kRefSize> W_ =
-      (Eigen::Matrix<T, kRefSize, 1>() << 10 * Eigen::Matrix<T, 3, 1>::Ones(),
-       100 * Eigen::Matrix<T, 4, 1>::Ones(),
-       10 * Eigen::Matrix<T, 3, 1>::Ones(),
+      (Eigen::Matrix<T, kRefSize, 1>() << 10 * Vector3Type::Ones(),
+       100 * InputType::Ones(),
+       10 * Vector3Type::Ones(),
        Eigen::Matrix<T, 2, 1>::Zero(),
        1,
        10,
