@@ -52,26 +52,25 @@ MpcWrapper<T>::MpcWrapper() {
   // Initialize states x and xN and input u.
   acado_initial_state_ = hover_state.template cast<float>();
 
-  acado_states_ = hover_state.replicate(1, kSamples + 1).template cast<float>();
+  acado_states_.colwise() = hover_state.template cast<float>();
 
-  acado_inputs_ = kHoverInput_.replicate(1, kSamples).template cast<float>();
+  acado_inputs_.colwise() = kHoverInput_.template cast<float>();
 
   // Initialize references y and yN.
-  acado_reference_states_.block(0, 0, kStateSize, kSamples) =
-      hover_state.replicate(1, kSamples).template cast<float>();
+  acado_reference_states_.block(0, 0, kStateSize, kSamples).colwise() =
+      hover_state.template cast<float>();
 
-  acado_reference_states_.block(
-      kStateSize, 0, kCostSize - kStateSize, kSamples) =
-      Eigen::Matrix<float, kCostSize - kStateSize, kSamples>::Zero();
+  acado_reference_states_.block(kStateSize, 0, kCostSize - kStateSize, kSamples)
+      .setZero();
 
-  acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples) =
-      kHoverInput_.replicate(1, kSamples);
+  acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples).colwise() =
+      kHoverInput_.template cast<float>();
 
   acado_reference_end_state_.segment(0, kStateSize) =
       hover_state.template cast<float>();
 
-  acado_reference_end_state_.segment(kStateSize, kCostSize - kStateSize) =
-      Eigen::Matrix<float, kCostSize - kStateSize, 1>::Zero();
+  acado_reference_end_state_.segment(kStateSize, kCostSize - kStateSize)
+      .setZero();
 
   // Initialize Cost matrix W and WN.
   if (!(acado_W_.trace() > 0.0)) {
@@ -169,11 +168,9 @@ bool MpcWrapper<T>::setLimits(T min_thrust,
       -max_yawrate;
   upper_bounds << max_thrust, max_rollpitchrate, max_rollpitchrate, max_yawrate;
 
-  acado_lower_bounds_ =
-      lower_bounds.replicate(1, kSamples).template cast<float>();
+  acado_lower_bounds_.colwise() = lower_bounds.template cast<float>();
 
-  acado_upper_bounds_ =
-      upper_bounds.replicate(1, kSamples).template cast<float>();
+  acado_upper_bounds_.colwise() = upper_bounds.template cast<float>();
   return true;
 }
 
@@ -182,12 +179,12 @@ template <typename T>
 bool MpcWrapper<T>::setCameraParameters(
     const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& p_B_C,
     Eigen::Quaternion<T>& q_B_C) {
-  acado_online_data_.block(3, 0, 3, ACADO_N + 1) =
-      p_B_C.replicate(1, ACADO_N + 1).template cast<float>();
+  acado_online_data_.block(3, 0, 3, ACADO_N + 1).colwise() =
+      p_B_C.template cast<float>();
 
   Eigen::Matrix<T, 4, 1> q_B_C_mat(q_B_C.w(), q_B_C.x(), q_B_C.y(), q_B_C.z());
-  acado_online_data_.block(6, 0, 4, ACADO_N + 1) =
-      q_B_C_mat.replicate(1, ACADO_N + 1).template cast<float>();
+  acado_online_data_.block(6, 0, 4, ACADO_N + 1).colwise() =
+      q_B_C_mat.template cast<float>();
 
   return true;
 }
@@ -196,8 +193,8 @@ bool MpcWrapper<T>::setCameraParameters(
 template <typename T>
 bool MpcWrapper<T>::setPointOfInterest(
     const Eigen::Ref<const Eigen::Matrix<T, 3, 1>>& position) {
-  acado_online_data_.block(0, 0, 3, ACADO_N + 1) =
-      position.replicate(1, ACADO_N + 1).template cast<float>();
+  acado_online_data_.block(0, 0, 3, ACADO_N + 1).colwise() =
+      position.template cast<float>();
   return true;
 }
 
@@ -205,21 +202,20 @@ bool MpcWrapper<T>::setPointOfInterest(
 template <typename T>
 bool MpcWrapper<T>::setReferencePose(
     const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state) {
-  acado_reference_states_.block(0, 0, kStateSize, kSamples) =
-      state.replicate(1, kSamples).template cast<float>();
+  acado_reference_states_.block(0, 0, kStateSize, kSamples).colwise() =
+      state.template cast<float>();
 
-  acado_reference_states_.block(
-      kStateSize, 0, kCostSize - kStateSize, kSamples) =
-      Eigen::Matrix<float, kCostSize - kStateSize, kSamples>::Zero();
+  acado_reference_states_.block(kStateSize, 0, kCostSize - kStateSize, kSamples)
+      .setZero();
 
-  acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples) =
-      kHoverInput_.replicate(1, kSamples);
+  acado_reference_states_.block(kCostSize, 0, kInputSize, kSamples).colwise() =
+      kHoverInput_;
 
   acado_reference_end_state_.segment(0, kStateSize) =
       state.template cast<float>();
 
-  acado_reference_end_state_.segment(kStateSize, kCostSize - kStateSize) =
-      Eigen::Matrix<float, kCostSize - kStateSize, 1>::Zero();
+  acado_reference_end_state_.segment(kStateSize, kCostSize - kStateSize)
+      .setZero();
 
   acado_initializeNodesByForwardSimulation();
   return true;
@@ -255,9 +251,9 @@ bool MpcWrapper<T>::setTrajectory(
 template <typename T>
 bool MpcWrapper<T>::solve(
     const Eigen::Ref<const Eigen::Matrix<T, kStateSize, 1>> state) {
-  acado_states_ = state.replicate(1, kSamples + 1).template cast<float>();
+  acado_states_.colwise() = state.template cast<float>();
 
-  acado_inputs_ = kHoverInput_.replicate(1, kSamples);
+  acado_inputs_.colwise() = kHoverInput_;
 
   return update(state);
 }
