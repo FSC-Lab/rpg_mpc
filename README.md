@@ -7,6 +7,18 @@ It is available with the extension to be used as a "Perception Aware Model Predi
 [**Check out our YouTube-Video, showing PAMPC in Action**](https://www.youtube.com/watch?v=9vaj829vE18)
 [![PAMPC: Perception-Aware Model Predictive Control for Quadrotors](http://rpg.ifi.uzh.ch/img/quad_control/mpc_thumb_button_small.png)](https://www.youtube.com/watch?v=9vaj829vE18)
 
+## [FSC-fork] Stylistic/cosmetic cleanup
+
+The original `rpg-mpc` is code from 2018 and we don't necessarily agree with some of its stylistic/cosmetic design choices. 
+
+1. Apply modern formatters to all files. `clang-format` for C/C++ source code, `cmake-format` for cmake
+2. Begin linting the code. Start with the least intrusive `cpplint` hosted by vscode plugin
+3. Redesign CMakeLists, eliminate eigen_catkin, catkin_simple, etc. antiquated "helper" packages
+4. Refactor code
+   * Extract type aliases to clarify about the states, inputs, etc. properties of the MPC solver
+   * Eliminate templates. Modern companion computers can run double-precision math code integrated with ACADOS effectively
+   * Extract code to STL algorithms and apply idioms. This is *low urgency* and will be done opportunistically
+
 ## Publication
 If you use this code in an academic context, please cite the following [IROS 2018 paper](http://rpg.ifi.uzh.ch/docs/IROS18_Falanga.pdf).
 
